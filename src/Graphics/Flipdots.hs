@@ -1,4 +1,4 @@
-module Flipboard
+module Graphics.Flipdots
   ( Dims (..), FlipboardConfig (..), Img
   , renderImage, sendImage', sendImage
   ) where
