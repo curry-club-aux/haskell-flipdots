@@ -2,3 +2,4 @@ cabal.sandbox.config
 .cabal-sandbox
 dist
 .DS_Store
+client_session_key.aes

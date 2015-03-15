@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Graphics.Flipdots
   ( Dims (..), FlipboardConfig (..), Img
   , renderImage, sendImage', sendImage
@@ -7,33 +9,42 @@ import Network.Socket hiding (sendTo)
 import Network.Socket.ByteString (sendTo)
 import Data.Word8 (Word8)
 import Data.ByteString as BS
+import Data.Aeson
+import Control.Applicative ((<$>), (<*>))
 
 data Dims =
   Dims
-  { width :: Int
-  , height :: Int
+  { dimsRows :: Int
+  , dimsCols :: Int
   } deriving (Eq, Show, Read)
+
+instance ToJSON Dims where
+  toJSON (Dims r c) = object [ "rows" .= r, "cols" .= c ]
+
+instance FromJSON Dims where
+  parseJSON (Object o) = Dims <$> o .: "rows" <*> o .: "cols"
+  parseJSON _ = fail "expected an object"
 
 data FlipboardConfig =
   FlipboardConfig
-  { udpHostname :: String
-  , udpPort :: Int
-  , dims :: Dims
+  { flipboardHostname :: String
+  , flipboardPort :: Int
+  , flipboardDims :: Dims
   } deriving (Eq, Show, Read)
 
 type Img = Int -> Int -> Bool
 
 renderImage :: Img -> Dims -> ByteString
-renderImage img (Dims w h) = BS.pack $ toStr [ img x y | y <- [0..(h-1)], x <- [0..(w-1)] ]
+renderImage img (Dims rows cols) =
+  BS.pack $ toWordList [ img x y | y <- [0..(rows-1)], x <- [0..(cols-1)] ]
   where
     i True x = x
     i False _ = 0
-    toStr :: [Bool] -> [Word8]
-    toStr (a:b:c:d:e:f:g:h:xs) =
-      let num = i a 128 + i b 64 + i c 32 + i d 16 + i e 8 + i f 4 + i g 2 + i h 1
-      --let num = i a 1 + i b 2 + i c 4 + i d 8 + i e 16 + i f 32 + i g 64 + i h 128
-      in num : toStr xs
-    toStr _ = []
+    toWordList :: [Bool] -> [Word8]
+    toWordList (a:b:c:d:e:f:g:h:xs) =
+      let word = i a 128 + i b 64 + i c 32 + i d 16 + i e 8 + i f 4 + i g 2 + i h 1
+      in word : toWordList xs
+    toWordList _ = []
 
 sendImage' :: ByteString -> FlipboardConfig -> IO ()
 sendImage' img (FlipboardConfig hostname port _dims) = do
