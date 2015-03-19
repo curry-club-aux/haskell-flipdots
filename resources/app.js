@@ -99,17 +99,31 @@ function initialize (dims, initialImg) {
     };
   }
 
-  function paint (e) {
+  function getCoords (e) {
     var off = canvas.offset();
-    var x = Math.floor((e.pageX - off.left) / d);
-    var y = Math.floor((e.pageY - off.top) / d);
-    currImg[y][x] = currColor;
+    return {
+      x: Math.floor((e.pageX - off.left) / d),
+      y: Math.floor((e.pageY - off.top) / d)
+    };
+  }
+
+  function paint (e) {
+    var coords = getCoords(e);
+    currImg[coords.y][coords.x] = currColor;
   }
 
   function mouseMove (e) {
-    if (!isMouseDown) { return; }
-    operation(paint, true)(e);
     e.preventDefault();
+    if (isMouseDown) {
+      operation(paint, true)(e);
+    }
+    currCoords = getCoords(e);
+    displayImg(currImg);
+  }
+
+  function mouseLeave () {
+    currCoords = null;
+    displayImg(currImg);
   }
 
   function clear (color) {
@@ -142,8 +156,13 @@ function initialize (dims, initialImg) {
       for (var x = 0; x < dims.cols; x++) {
         var color = img[y][x] ? '#fff' : '#000';
         ctx.fillStyle = color;
+        ctx.lineWidth = 1;
         ctx.fillRect(x*d, y*d, d, d);
       }
+    }
+    if (currCoords) {
+      ctx.strokeStyle = '#888';
+      ctx.strokeRect(currCoords.x*d, currCoords.y*d, d, d);
     }
   }
 
@@ -162,7 +181,8 @@ function initialize (dims, initialImg) {
     .attr({ width: dims.cols * d, height: dims.rows * d })
     .appendTo($('#wrapper'))
     .on('mousedown', mouseDown)
-    .on('mousemove', mouseMove);
+    .on('mousemove', mouseMove)
+    .on('mouseleave', mouseLeave);
   $(document.body).on('mouseup', mouseUp);
 
   var buttons = $('<div class="buttons" />').appendTo($('#wrapper'));
@@ -196,6 +216,7 @@ function initialize (dims, initialImg) {
   });
 
   var currImg = unpack(initialImg, dims);
+  var currCoords = null;
   displayImg(currImg);
 }
 
