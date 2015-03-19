@@ -19,3 +19,11 @@ h1 {
 .buttons {
   margin: 8px 0;
 }
+
+.toolbox {
+  float: left;
+}
+
+.undo {
+  float: right;
+}

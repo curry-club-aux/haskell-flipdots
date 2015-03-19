@@ -49,76 +49,95 @@ socket.on('flipboard', function (obj) {
 });
 
 function initialize (dims, initialImg) {
-  var d = 12;
-  var canvas = $('<canvas />')
-    .attr({ width: dims.cols * d, height: dims.rows * d })
-    .appendTo($('#wrapper'))
-    .on('mousedown', mouseDown)
-    .on('mousemove', mouseMove);
-  $(document.body).on('mouseup', mouseUp);
-
-  var currColor = true;
-  var buttons = $('<div class="buttons" />').appendTo($('#wrapper'));
-  function addButton (label, onclick) {
-    $(document.createTextNode(' ')).appendTo(buttons);
+  function addButton (container, label, onclick) {
+    $(document.createTextNode(' ')).appendTo(container);
     return $('<input type="button" />')
       .attr({ value: label })
       .on('click', function (e) { e.preventDefault(); onclick(e); })
-      .appendTo(buttons);
+      .appendTo(container);
   }
-  addButton("white", function () { currColor = true; });
-  addButton("black", function () { currColor = false; });
-  addButton("clear white", function () { clear(true); currColor = false; });
-  addButton("clear black", function () { clear(false); currColor = true; });
-  addButton("invert", invert);
 
-  socket.on('new image', function (img) {
-    displayImg(unpack(img, dims));
-  });
+  var undoStack = [];
+  var redoStack = [];
+
+  function undoRedoHelper (fromStack, toStack) {
+    if (fromStack.length === 0) { return; }
+    toStack.push(currImg);
+    currImg = fromStack.pop();
+    imgChanged();
+    updateUndoRedoButtonState();
+  }
+
+  function undo () { undoRedoHelper(undoStack, redoStack); }
+  function redo () { undoRedoHelper(redoStack, undoStack); }
 
   var isMouseDown = false;
-  function mouseDown (e) { isMouseDown = true; paint(e); e.preventDefault(); }
+  function mouseDown (e) { isMouseDown = true; operation(paint)(e); e.preventDefault(); }
   function mouseUp ()    { isMouseDown = false; }
+
+  function cloneImg (img) {
+    var c = [];
+    for (var y = 0; y < dims.rows; y++) {
+      c[y] = [];
+      for (var x = 0; x < dims.cols; x++) {
+        c[y][x] = img[y][x];
+      }
+    }
+    return c;
+  }
+
+  function operation (fn, mergeState) {
+    return function () {
+      if (!mergeState) {
+        var clone = cloneImg(currImg);
+        undoStack.push(clone);
+        redoStack = [];
+      }
+      fn.apply(this, arguments);
+      updateUndoRedoButtonState();
+      imgChanged();
+    };
+  }
 
   function paint (e) {
     var off = canvas.offset();
     var x = Math.floor((e.pageX - off.left) / d);
     var y = Math.floor((e.pageY - off.top) / d);
     currImg[y][x] = currColor;
-    imgChanged();
   }
 
   function mouseMove (e) {
     if (!isMouseDown) { return; }
-    paint(e);
+    operation(paint, true)(e);
     e.preventDefault();
   }
 
   function clear (color) {
-    for (var y = 0; y < dims.rows; y++) {
-      for (var x = 0; x < dims.cols; x++) {
-        currImg[y][x] = color;
+    return operation(function () {
+      for (var y = 0; y < dims.rows; y++) {
+        for (var x = 0; x < dims.cols; x++) {
+          currImg[y][x] = color;
+        }
       }
-    }
-    imgChanged();
+      currColor = !color;
+    });
   }
 
-  function invert () {
+  var invert = operation(function () {
     for (var y = 0; y < dims.rows; y++) {
       for (var x = 0; x < dims.cols; x++) {
         currImg[y][x] = !currImg[y][x];
       }
     }
-    imgChanged();
-  }
+  });
 
   function imgChanged () {
     displayImg(currImg);
     queueSendImg();
   }
 
-  var ctx = canvas.get(0).getContext('2d');
   function displayImg (img) {
+    var ctx = canvas.get(0).getContext('2d');
     for (var y = 0; y < dims.rows; y++) {
       for (var x = 0; x < dims.cols; x++) {
         var color = img[y][x] ? '#fff' : '#000';
@@ -137,6 +156,44 @@ function initialize (dims, initialImg) {
     }, 100);
     sendQueued = true;
   }
+
+  var d = 12;
+  var canvas = $('<canvas />')
+    .attr({ width: dims.cols * d, height: dims.rows * d })
+    .appendTo($('#wrapper'))
+    .on('mousedown', mouseDown)
+    .on('mousemove', mouseMove);
+  $(document.body).on('mouseup', mouseUp);
+
+  var buttons = $('<div class="buttons" />').appendTo($('#wrapper'));
+
+  var toolbox = $('<div class="toolbox" />').appendTo(buttons);
+  var currColor = true;
+  addButton(toolbox, "white", function () { currColor = true; });
+  addButton(toolbox, "black", function () { currColor = false; });
+  addButton(toolbox, "clear white", clear(true));
+  addButton(toolbox, "clear black", clear(false));
+  addButton(toolbox, "invert", invert);
+
+  var undoContainer = $('<div class="undo" />').appendTo(buttons);
+  var undoButton = addButton(undoContainer, "undo", undo);
+  var redoButton = addButton(undoContainer, "redo", redo);
+  updateUndoRedoButtonState();
+
+  function setEnabled (button, state) {
+    $(button).each(function() {
+      this.disabled = !state;
+    });
+  }
+
+  function updateUndoRedoButtonState () {
+    setEnabled(undoButton, undoStack.length > 0);
+    setEnabled(redoButton, redoStack.length > 0);
+  }
+
+  socket.on('new image', function (img) {
+    displayImg(unpack(img, dims));
+  });
 
   var currImg = unpack(initialImg, dims);
   displayImg(currImg);
