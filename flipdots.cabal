@@ -16,7 +16,7 @@ data-files:          index.html app.js style.css
 
 library
   exposed-modules:     Graphics.Flipdots
-  build-depends:       base >= 4.6 && < 4.8,
+  build-depends:       base >= 4.6 && < 4.9,
                        network >= 2.6 && < 2.7,
                        word8 >= 0.1 && < 0.2,
                        bytestring >= 0.10 && < 0.11,
