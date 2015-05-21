@@ -12,7 +12,7 @@ category:            Graphics
 build-type:          Simple
 cabal-version:       >= 1.10
 data-dir:            resources
-data-files:          index.html app.js style.css
+data-files:          index.html app.js style.css jquery.min.js socket.io.min.js
 
 library
   exposed-modules:     Graphics.Flipdots
