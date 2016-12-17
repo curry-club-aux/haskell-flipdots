@@ -16,11 +16,11 @@ data-files:          index.html app.js style.css jquery.min.js socket.io.min.js
 
 library
   exposed-modules:     Graphics.Flipdots
-  build-depends:       base >= 4.6 && < 4.9,
+  build-depends:       base >= 4.6 && < 4.10,
                        network >= 2.6 && < 2.7,
                        word8 >= 0.1 && < 0.2,
                        bytestring >= 0.10 && < 0.11,
-                       aeson >= 0.7.0.6 && < 0.9
+                       aeson >= 0.7.0.6 && < 1.1
   hs-source-dirs:      src
   ghc-options:         -Wall
   default-language:    Haskell2010
