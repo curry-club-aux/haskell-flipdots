@@ -10,8 +10,8 @@ main = forM_ (cycle imgs) $ \img -> do
   threadDelay delay
   where
     fps = 128/60
-    delay = round (1000000 / fps)
-    dims = Dims { width = 80, height = 16 }
+    delay = round (1000000 / fps :: Double)
+    dims = Dims { dimsCols = 80, dimsRows = 16 }
     flipboardConfig = FlipboardConfig "flipdot.openlab.lan" 2323 dims
     imgs =
       [ \x y -> (x `div` s) `mod` 2 == 0 && (y `div` s) `mod` 2 == 0
